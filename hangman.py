@@ -1,50 +1,73 @@
 #Step 5
 
 import random
-from hangman_words import word_list
+import sqlite3
 from hangman_art import stages, logo
 
-chosen_word = random.choice(word_list)
-word_length = len(chosen_word)
+def get_category():
+    conn = sqlite3.connect('data/hangman.db')
+    c = conn.cursor()
 
-end_of_game = False
-lives = 6
-print(logo)
+    c.execute('SELECT * FROM categories')
+    categories = c.fetchall()
+    
+    print("Choose a category:")
+    for i, category in enumerate(categories, 1):
+        print(f"{i}. {category[1]}")
+    
+    choice = int(input("Enter the number of your choice: ")) - 1
+    category = categories[choice]
+    conn.close()
+    return category[1], category[0]
 
-#Testing code
-#print(f'The solution is {chosen_word}.')
+def get_word(category_id):
+    conn = sqlite3.connect('data/hangman.db')
+    c = conn.cursor()
 
-#Create blanks
-display = []
-for _ in range(word_length):
-    display += "_"
+    c.execute('SELECT word FROM words WHERE category_id=?', (category_id,))
+    words = c.fetchall()
+    chosen_word = random.choice(words)[0]
 
-while not end_of_game:
-    guess = input("Guess a letter: ").lower()
-    if guess in display:
-        print(f"You've already guessed {guess}")
+    conn.close()
+    return chosen_word
 
-    #Check guessed letter
-    for position in range(word_length):
-        letter = chosen_word[position]
-        #print(f"Current position: {position}\n Current letter: {letter}\n Guessed letter: {guess}")
-        if letter == guess:
-            display[position] = letter
+def hangman():
+    category_name, category_id = get_category()
+    chosen_word = get_word(category_id)
+    word_length = len(chosen_word)
+    lives = 6
+    end_game = False
+    display = ["_"] * word_length
 
-    #Check if user is wrong.
-    if guess not in chosen_word:
-        print(f"You guessed {guess}, that's not in the word. You lose a life.")
-        lives -= 1
-        if lives == 0:
-            end_of_game = True
-            print("You lose.")
+    print(f"\nPssst, the solution is {chosen_word}.\n")
+    print(f"The category is: {category_name}\n")
 
-    #Join all the elements in the list and turn it into a String.
-    print(f"{' '.join(display)}")
+    while not end_game:
+        guess = input("Guess a letter: ").lower()
 
-    #Check if user has got all letters.
-    if "_" not in display:
-        end_of_game = True
-        print("You win.")
+        if guess in display:
+            print(f"You've already guessed {guess}")
+        else:
+            for position in range(word_length):
+                letter = chosen_word[position]
+                if letter == guess:
+                    display[position] = letter
 
-    print(stages[lives])
+            if guess not in chosen_word:
+                lives -= 1
+                print(f"You guessed {guess}, that's not in the word. You lose a life.")
+                if lives == 0:
+                    end_game = True
+                    print("You lose.")
+                    print(f"The word was {chosen_word}.")
+
+        print(f"{' '.join(display)}")
+
+        if "_" not in display:
+            end_game = True
+            print("You win!")
+
+        print(stages[lives])
+
+if __name__ == "__main__":
+    hangman()
